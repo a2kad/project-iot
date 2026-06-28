@@ -4,7 +4,7 @@ set -e
 CLUSTER_NAME="iot-cluster"
 ARGOCD_NS="argocd"
 DEV_NS="dev"
-ARGOCD_PORT="8080"
+ARGOCD_PORT="443"
 ARGOCD_PORT_LOCAL="8080"
 
 RED='\033[0;31m'
@@ -125,7 +125,7 @@ install_argocd() {
 
     log_info "Installing Argo CD..."
 
-    kubectl apply -n "$ARGOCD_NS" -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    kubectl apply --server-side -n "$ARGOCD_NS" -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
     log_info "Argo CD manifests applied"
 }
@@ -133,7 +133,9 @@ install_argocd() {
 wait_for_argocd() {
     log_info "Waiting for Argo CD pods to be ready..."
 
-    kubectl wait --for=condition=ready pod \
+	sleep 5  # Initial wait before checking pod status
+
+    kubectl wait --for=condition=available deployment \
         -l app.kubernetes.io/part-of=argocd \
         -n "$ARGOCD_NS" \
         --timeout=300s || log_warn "Some pods may not be ready yet"
@@ -171,7 +173,7 @@ setup_port_forwarding() {
     PF_PID=$!
 
     log_info "Port-forwarding started (PID: $PF_PID)"
-    log_info "Argo CD UI will be available at: http://localhost:$ARGOCD_PORT_LOCAL"
+    log_info "Argo CD UI will be available at: https://localhost:$ARGOCD_PORT_LOCAL"
 
     sleep 3
 }
@@ -225,7 +227,7 @@ main() {
     apply_argocd_app
 
     log_info "Setup completed successfully!"
-    log_info "Access Argo CD UI at: http://localhost:$ARGOCD_PORT_LOCAL"
+    log_info "Access Argo CD UI at: https://localhost:$ARGOCD_PORT_LOCAL"
     log_info "Username: admin"
     log_info "Run 'kubectl logs -f -n $ARGOCD_NS -l app.kubernetes.io/part-of=argocd' to see logs"
 }
